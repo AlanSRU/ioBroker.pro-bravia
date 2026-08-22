@@ -1,6 +1,6 @@
 import { sanitiseId } from '../discovery/state-mapper';
 import { BraviaError } from '../lib/errors';
-import { SSIP_COMMANDS, SSIP_IR_CODES, encodeNumericParam, type SsipIrKey } from '../transport/ssip-protocol';
+import { SSIP_COMMANDS, SSIP_IR_CODES, encodeNumericParam } from '../transport/ssip-protocol';
 import type { DeviceContext, FeatureModule } from './types';
 
 /**
@@ -141,13 +141,5 @@ export class RemoteModule implements FeatureModule {
             throw new BraviaError('IRCC-IP is disabled in the instance configuration', 'unsupported');
         }
         await this.ctx.ircc.send(code);
-    }
-
-    /**
-     * Exposed for tests: the SSIP numeric code table keyed by state id.
-     *
-     */
-    public static ssipKeyName(key: SsipIrKey): string {
-        return sanitiseId(key);
     }
 }

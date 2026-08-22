@@ -32,13 +32,11 @@ interface JsonRpcResponse<T> {
 
 export class BraviaRestClient {
     private readonly http: AxiosInstance;
-    private readonly host: string;
     private requestId = 0;
     /** Tail of the serialisation chain; each call awaits the previous one. */
     private queue: Promise<unknown> = Promise.resolve();
 
     public constructor(options: RestClientOptions) {
-        this.host = options.host;
         this.http = axios.create({
             baseURL: `http://${options.host}${options.port && options.port !== 80 ? `:${options.port}` : ''}/sony`,
             timeout: options.timeoutMs ?? 5000,
@@ -139,9 +137,5 @@ export class BraviaRestClient {
             );
         }
         return result[0];
-    }
-
-    public get address(): string {
-        return this.host;
     }
 }

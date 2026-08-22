@@ -1,5 +1,11 @@
 import { BraviaError } from '../lib/errors';
-import { SSIP_COMMANDS, encodeNumericParam, parseNumericAnswer, type SsipMessage } from '../transport/ssip-protocol';
+import {
+    SSIP_COMMANDS,
+    encodeNumericParam,
+    parseNumericAnswer,
+    parseStringAnswer,
+    type SsipMessage,
+} from '../transport/ssip-protocol';
 import { wake } from '../transport/wol';
 import type { DeviceContext, FeatureModule } from './types';
 
@@ -236,6 +242,21 @@ export class SystemModule implements FeatureModule {
                 }
             } catch (e) {
                 this.ctx.reportError(e, 'system.getNetworkSettings');
+            }
+        }
+
+        // Wake-on-LAN is useless without a MAC, and REST cannot answer once the display has
+        // suspended — so fall back to SSIP, which stays reachable longer.
+        if (!this.macAddress && this.ctx.ssip?.isConnected) {
+            try {
+                const answer = await this.ctx.ssip.enquire(SSIP_COMMANDS.macAddress, 'eth0############');
+                const mac = parseStringAnswer(answer.parameter);
+                if (mac && /^[0-9a-fA-F]{12}$/.test(mac)) {
+                    this.macAddress = mac;
+                    await store.setAck('info.macAddress', mac);
+                }
+            } catch {
+                // Optional: the user can still set the MAC in the instance configuration.
             }
         }
 

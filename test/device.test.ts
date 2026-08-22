@@ -245,6 +245,120 @@ describe('BraviaDevice against a mock display', () => {
         });
     });
 
+    describe('liveness is reported honestly', () => {
+        it('rejects refresh when the display stops answering, so info.connection can go false', async () => {
+            await build(new MockBraviaDisplay());
+            await expect(device.refresh()).resolves.toBeUndefined();
+
+            // Per-module failures are swallowed by design, so only an unguarded probe can
+            // tell the adapter the display has gone.
+            await display.stop();
+            await expect(device.refresh()).rejects.toMatchObject({ kind: 'transport' });
+        });
+
+        it('rejects initialise when the pre-shared key is wrong', async () => {
+            display = new MockBraviaDisplay({ psk: 'correct-key' });
+            await display.start();
+            store = new MemoryStateStore();
+            device = new BraviaDevice(
+                { host: '127.0.0.1', psk: 'wrong-key', httpPort: display.httpPort, useSsip: false, useIrcc: false },
+                store,
+            );
+            // Without this the instance would show green forever with a mistyped key.
+            await expect(device.initialise()).rejects.toMatchObject({ kind: 'auth' });
+        });
+
+        it('warns once per context rather than on every failed call', async () => {
+            await build(new MockBraviaDisplay());
+            await display.stop();
+
+            for (let i = 0; i < 3; i++) {
+                await device.refresh().catch(() => undefined);
+            }
+            // An unreachable display fails many calls per cycle; the log must not scale with it.
+            const warnings = store.logs.filter(line => line.startsWith('warn:'));
+            expect(new Set(warnings).size).toBe(warnings.length);
+        });
+    });
+
+    describe('stop() halts work in flight', () => {
+        it('stops refreshing and stops writing state', async () => {
+            await build(new MockBraviaDisplay());
+            device.stop();
+
+            const before = new Map(store.values);
+            display.volume = 99;
+            await device.refresh();
+
+            // A stop during a slow refresh must not keep writing to a torn-down instance.
+            expect(store.values.get('audio.volume')).toEqual(before.get('audio.volume'));
+        });
+    });
+
+    describe('discovered children are pruned when the display drops them', () => {
+        it('removes an app channel for an app that is no longer installed', async () => {
+            const mock = new MockBraviaDisplay();
+            mock.applications = [{ title: 'BRAVIA Signage', uri: 'com.sony.dtv.signage', icon: '' }];
+            await build(mock);
+
+            expect(store.objects.has('apps.items.BRAVIA_Signage')).toBe(true);
+            // A stale entry left over from a previous run, as after an uninstall.
+            await store.ensureChannel('apps.items.Old_App', 'Old App');
+            await store.ensureState('apps.items.Old_App.launch', {
+                name: 'Launch',
+                type: 'boolean',
+                role: 'button',
+                read: false,
+                write: true,
+            });
+
+            await device.initialise();
+
+            expect(store.objects.has('apps.items.Old_App')).toBe(false);
+            expect(store.objects.has('apps.items.Old_App.launch')).toBe(false);
+            expect(store.objects.has('apps.items.BRAVIA_Signage')).toBe(true);
+        });
+
+        it('removes an input channel the display no longer reports', async () => {
+            await build(new MockBraviaDisplay());
+            await store.ensureChannel('input.sources.hdmi9', 'HDMI 9');
+            await device.initialise();
+            expect(store.objects.has('input.sources.hdmi9')).toBe(false);
+            expect(store.objects.has('input.sources.hdmi1')).toBe(true);
+        });
+    });
+
+    describe('values the display never reported are not published', () => {
+        it('leaves sound settings at their default when there is no getter', async () => {
+            // Professional displays document setSoundSettings without a paired getter.
+            await build(new MockBraviaDisplay({ unsupportedMethods: ['getSoundSettings'] }));
+
+            // The state must still exist so the target is controllable...
+            expect(store.objects.has('audio.soundSettings.outputTerminal')).toBe(true);
+            // ...but its value must not be a guess presented as a reading.
+            expect(await store.getValue('audio.soundSettings.outputTerminal')).toBeUndefined();
+        });
+    });
+
+    describe('audio states match what the display can actually do', () => {
+        it('makes per-output mute read-only, since setAudioMute has no target', async () => {
+            await build(new MockBraviaDisplay());
+            expect(store.objects.get('audio.outputs.headphone.mute')?.common).toMatchObject({
+                role: 'indicator',
+                write: false,
+            });
+            // The global mute remains controllable.
+            expect(store.objects.get('audio.mute')?.common).toMatchObject({ role: 'switch', write: true });
+        });
+
+        it('uses read-only roles when the display cannot set volume or mute', async () => {
+            await build(new MockBraviaDisplay({ unsupportedMethods: ['setAudioVolume', 'setAudioMute'] }));
+            expect(store.objects.get('audio.volume')?.common).toMatchObject({ role: 'value', write: false });
+            expect(store.objects.get('audio.mute')?.common).toMatchObject({ role: 'indicator', write: false });
+            expect(store.objects.has('audio.volumeUp')).toBe(false);
+        });
+    });
+
     describe('capability differences change the state tree', () => {
         it('omits scene setting on models that do not implement videoScreen', async () => {
             // BZ40P / BZ35P / BZ30P do not support setSceneSetting.

@@ -46,6 +46,12 @@ export class BraviaDevice {
     /** Root channel -> the handler that owns writes beneath it. */
     private readonly writeHandlers = new Map<string, (path: string, value: ioBroker.StateValue) => Promise<boolean>>();
     private ready = false;
+    private stopped = false;
+    /**
+     * Contexts already reported at warn level. A display that is unplugged fails ~9 calls per
+     * poll; without this the log fills with identical lines indefinitely.
+     */
+    private readonly reportedContexts = new Set<string>();
 
     public constructor(
         private readonly options: BraviaDeviceOptions,
@@ -89,12 +95,34 @@ export class BraviaDevice {
     }
 
     /**
+     * Confirm the display is actually answering.
+     *
+     * The module loops below deliberately swallow per-feature failures so one unsupported
+     * method cannot abort discovery — which means they can never tell the caller the display
+     * is unreachable. This single unguarded call is the liveness signal `info.connection`
+     * is driven from, and it is also what surfaces a wrong pre-shared key as an auth error.
+     */
+    public async probe(): Promise<void> {
+        await this.rest.call('system', 'getPowerStatus');
+        // Reaching the display again makes previously reported failures newsworthy once more.
+        this.reportedContexts.clear();
+    }
+
+    /** Stop all further work. Called from `onUnload` before the transports are torn down. */
+    public stop(): void {
+        this.stopped = true;
+    }
+
+    /**
      * Discover what the display supports and build the state tree from it.
      *
      * Called once the display is reachable. Safe to call again after a reconnection: object
      * creation is idempotent.
      */
     public async initialise(): Promise<void> {
+        // Must come first: Capabilities.discover() falls back to "assume everything supported"
+        // when the display does not answer, so on its own it hides an unreachable display.
+        await this.probe();
         this.capabilities = await Capabilities.discover(this.rest);
         if (this.capabilities.assumed) {
             this.store.log.warn(
@@ -117,6 +145,11 @@ export class BraviaDevice {
         this.modules = [system, audio, video, avContent, videoScreen, appControl, remote];
 
         for (const module of this.modules) {
+            // Re-checked every iteration: discovery can run for a long time against a slow
+            // display, and a Save in admin restarts the instance underneath it.
+            if (this.stopped) {
+                return;
+            }
             try {
                 await module.init();
             } catch (e) {
@@ -140,10 +173,15 @@ export class BraviaDevice {
 
     /** Re-read every value the display exposes. */
     public async refresh(): Promise<void> {
-        if (!this.ready) {
+        if (!this.ready || this.stopped) {
             return;
         }
+        // Rejects when the display is unreachable, so the caller can act on it.
+        await this.probe();
         for (const module of this.modules) {
+            if (this.stopped) {
+                return;
+            }
             try {
                 await module.refresh();
             } catch (e) {
@@ -210,6 +248,16 @@ export class BraviaDevice {
             return;
         }
 
+        if (this.stopped) {
+            return;
+        }
+
+        // Warn once per context until the display answers again; repeats go to debug.
+        if (this.reportedContexts.has(context)) {
+            this.store.log.debug(`${context}: ${message}`);
+            return;
+        }
+        this.reportedContexts.add(context);
         this.store.log.warn(`${context}: ${message}`);
         void this.store.setAck('info.lastError', `${context}: ${message}`);
     }

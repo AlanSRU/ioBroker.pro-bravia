@@ -1,4 +1,5 @@
 import { sanitiseId } from '../discovery/state-mapper';
+import { pruneChildren } from '../lib/state-store';
 import type { DeviceContext, FeatureModule } from './types';
 
 /**
@@ -91,6 +92,7 @@ export class AppControlModule implements FeatureModule {
                 });
                 await store.setAck(`apps.items.${id}.uri`, application.uri);
             }
+            await pruneChildren(store, 'apps.items', this.idToUri.keys());
         }
     }
 

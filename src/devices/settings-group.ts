@@ -21,11 +21,6 @@ export interface SettingsGroupOptions {
     /** Versions to try for the getter, most preferred first. */
     getVersions: string[];
     setVersions: string[];
-    /**
-     * Targets that must be sent alone in their own request. Sony documents that batching
-     * `hdmiSignalFormat` with other targets can fail depending on the current signal.
-     */
-    isolatedTargets?: string[];
     /** Fallback targets to expose when the display has a setter but no matching getter. */
     fallbackEntries?: SettingEntry[];
 }
@@ -34,14 +29,11 @@ export class SettingsGroup {
     private descriptors = new Map<string, SettingDescriptor>();
     private getVersion?: string;
     private setVersion?: string;
-    private readonly isolated: Set<string>;
 
     public constructor(
         private readonly ctx: DeviceContext,
         private readonly options: SettingsGroupOptions,
-    ) {
-        this.isolated = new Set(options.isolatedTargets ?? []);
-    }
+    ) {}
 
     public get root(): string {
         return this.options.root;
@@ -71,8 +63,10 @@ export class SettingsGroup {
         }
 
         // Some displays offer the setter without a documented getter (audio sound settings).
+        let usedFallback = false;
         if (entries.length === 0 && writable && this.options.fallbackEntries) {
             entries = this.options.fallbackEntries;
+            usedFallback = true;
             store.log.debug(`${label}: display did not report targets via ${getMethod}; using documented defaults`);
         }
 
@@ -88,7 +82,16 @@ export class SettingsGroup {
         }
 
         store.log.debug(`${label}: discovered ${this.descriptors.size} target(s): ${this.targets.join(', ')}`);
-        await this.applyEntries(entries);
+
+        // Only publish values the display actually reported. The fallback list exists to build
+        // the state objects when there is no getter; its `currentValue` entries are invented, and
+        // acking them would present a guess as a real reading that never gets corrected, because
+        // refresh() has no getter to re-read from either.
+        if (usedFallback) {
+            store.log.debug(`${label}: values are not readable on this display; states stay at their default`);
+        } else {
+            await this.applyEntries(entries);
+        }
     }
 
     private async readAll(): Promise<SettingEntry[]> {
@@ -145,6 +148,8 @@ export class SettingsGroup {
             );
         }
 
+        // Deliberately one target per request: Sony documents that batching hdmiSignalFormat /
+        // hdmiSignalFormatVrr with other targets can fail depending on the current signal.
         const payload = { target: descriptor.target, value: descriptor.toDevice(value) };
         await this.ctx.rest.call(
             this.options.service,
@@ -154,13 +159,5 @@ export class SettingsGroup {
         );
         await this.ctx.store.setAck(`${this.options.root}.${descriptor.id}`, value);
         return true;
-    }
-
-    /**
-     * True when this target must not be batched with others. Consulted by callers that batch.
-     *
-     */
-    public isIsolated(target: string): boolean {
-        return this.isolated.has(target);
     }
 }

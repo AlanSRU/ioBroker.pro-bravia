@@ -69,6 +69,22 @@ export function parentIds(id: string): string[] {
 }
 
 /**
+ * Delete discovered children that the display no longer reports.
+ *
+ * Without this, uninstalling an app or removing an input leaves its channel behind with stale
+ * values and a button no module claims, so pressing it only logs "no handler".
+ */
+export async function pruneChildren(store: StateStore, parent: string, keep: Iterable<string>): Promise<void> {
+    const wanted = new Set(keep);
+    for (const child of await store.childIds(parent)) {
+        if (!wanted.has(child)) {
+            store.log.debug(`Removing ${parent}.${child}; the display no longer reports it`);
+            await store.deleteObject(`${parent}.${child}`);
+        }
+    }
+}
+
+/**
  * In-memory implementation used by the unit tests.
  *
  * The methods are synchronous internally but keep the Promise-returning signature of

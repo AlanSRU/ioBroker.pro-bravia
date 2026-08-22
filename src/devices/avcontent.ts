@@ -1,11 +1,6 @@
 import { sanitiseId } from '../discovery/state-mapper';
-import {
-    SSIP_COMMANDS,
-    decodeInputParam,
-    encodeInputParam,
-    type SsipInputType,
-    type SsipMessage,
-} from '../transport/ssip-protocol';
+import { pruneChildren } from '../lib/state-store';
+import { SSIP_COMMANDS, decodeInputParam, type SsipInputType, type SsipMessage } from '../transport/ssip-protocol';
 import type { DeviceContext, FeatureModule } from './types';
 
 /**
@@ -135,6 +130,7 @@ export class AvContentModule implements FeatureModule {
                     });
                 }
             }
+            await pruneChildren(store, 'input.sources', this.idToUri.keys());
         }
 
         await this.applyInputs();
@@ -266,16 +262,5 @@ export class AvContentModule implements FeatureModule {
             await this.ctx.store.setAck('input.currentTitle', input.title ?? '');
         }
         return true;
-    }
-
-    /**
-     * Switch input over SSIP, which works in cases where HTTP is refused.
-     *
-     */
-    public async selectViaSsip(type: SsipInputType, port: number): Promise<void> {
-        if (!this.ctx.ssip) {
-            return;
-        }
-        await this.ctx.ssip.controlChecked(SSIP_COMMANDS.input, encodeInputParam(type, port));
     }
 }

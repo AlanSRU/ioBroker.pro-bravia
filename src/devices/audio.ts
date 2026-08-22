@@ -1,5 +1,5 @@
 import { sanitiseId } from '../discovery/state-mapper';
-import { SSIP_COMMANDS, encodeNumericParam, parseNumericAnswer, type SsipMessage } from '../transport/ssip-protocol';
+import { SSIP_COMMANDS, parseNumericAnswer, type SsipMessage } from '../transport/ssip-protocol';
 import { SettingsGroup } from './settings-group';
 import type { DeviceContext, FeatureModule } from './types';
 
@@ -86,7 +86,10 @@ export class AudioModule implements FeatureModule {
         await store.ensureState('audio.volume', {
             name: 'Volume',
             type: 'number',
-            role: 'level.volume',
+            // `level.volume` is defined as writable; a display without setAudioVolume needs
+            // the read-only counterpart or the object checker rejects it and the user gets a
+            // slider that silently does nothing.
+            role: canSetVolume ? 'level.volume' : 'value',
             read: true,
             write: canSetVolume,
             min: primaryInfo?.minVolume ?? 0,
@@ -95,7 +98,7 @@ export class AudioModule implements FeatureModule {
         await store.ensureState('audio.mute', {
             name: 'Mute',
             type: 'boolean',
-            role: 'switch',
+            role: canSetMute ? 'switch' : 'indicator',
             read: true,
             write: canSetMute,
         });
@@ -129,18 +132,21 @@ export class AudioModule implements FeatureModule {
                 await store.ensureState(`audio.outputs.${id}.volume`, {
                     name: `${entry.target} volume`,
                     type: 'number',
-                    role: 'level.volume',
+                    role: canSetVolume ? 'level.volume' : 'value',
                     read: true,
                     write: canSetVolume,
                     min: entry.minVolume ?? 0,
                     max: entry.maxVolume ?? 100,
                 });
+                // Read-only on purpose: setAudioMute takes only `status`, with no target, so a
+                // per-output mute write would silently mute whatever the display's default
+                // target is and then report the wrong output as muted. Use `audio.mute`.
                 await store.ensureState(`audio.outputs.${id}.mute`, {
                     name: `${entry.target} mute`,
                     type: 'boolean',
-                    role: 'switch',
+                    role: 'indicator',
                     read: true,
-                    write: canSetMute,
+                    write: false,
                 });
             }
         }
@@ -219,17 +225,13 @@ export class AudioModule implements FeatureModule {
             return true;
         }
 
-        const output = /^outputs\.([^.]+)\.(volume|mute)$/.exec(path);
+        // Only volume is per-output writable; mute has no target in the API.
+        const output = /^outputs\.([^.]+)\.volume$/.exec(path);
         if (output) {
-            const [, id, field] = output;
+            const id = output[1];
             const target = this.outputs.find(candidate => sanitiseId(candidate) === id) ?? id;
-            if (field === 'volume') {
-                await this.setVolume(target, String(Math.round(Number(value))));
-                await store.setAck(`audio.outputs.${id}.volume`, Number(value));
-            } else {
-                await rest.call('audio', 'setAudioMute', [{ status: Boolean(value) }]);
-                await store.setAck(`audio.outputs.${id}.mute`, Boolean(value));
-            }
+            await this.setVolume(target, String(Math.round(Number(value))));
+            await store.setAck(`audio.outputs.${id}.volume`, Number(value));
             return true;
         }
 
@@ -269,16 +271,5 @@ export class AudioModule implements FeatureModule {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Send an absolute volume over SSIP, used when the display refuses HTTP in standby.
-     *
-     */
-    public async setVolumeViaSsip(volume: number): Promise<void> {
-        if (!this.ctx.ssip) {
-            return;
-        }
-        await this.ctx.ssip.controlChecked(SSIP_COMMANDS.volume, encodeNumericParam(volume));
     }
 }

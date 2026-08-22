@@ -106,14 +106,6 @@ export class Capabilities {
         return preferred.find(version => available.includes(version));
     }
 
-    /**
-     * All methods known for a service, for logging and diagnostics.
-     *
-     */
-    public methodsFor(service: BraviaService): string[] {
-        return [...(this.methods.get(service)?.keys() ?? [])];
-    }
-
     public get serviceNames(): string[] {
         return [...this.methods.keys()];
     }

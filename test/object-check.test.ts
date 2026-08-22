@@ -78,6 +78,12 @@ describe('created objects satisfy the repository object checker rules', () => {
                     unsupportedMethods: ['setWolMode', 'setLEDIndicatorStatus', 'setScreenRotation', 'requestReboot'],
                 }),
         ],
+        [
+            // A restricted EU RED-DA variant: the audio service exists but cannot be driven.
+            // Without this profile the audio states kept writable-only roles while read-only.
+            'a display that reports audio but cannot control it',
+            () => new MockBraviaDisplay({ unsupportedMethods: ['setAudioVolume', 'setAudioMute'] }),
+        ],
     ];
 
     for (const [label, factory] of profiles) {

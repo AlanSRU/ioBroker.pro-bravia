@@ -113,7 +113,16 @@
       "common": {
         "name": {
           "en": "Information",
-          "de": "Informationen"
+          "de": "Informationen",
+          "ru": "Информация",
+          "pt": "Informações",
+          "nl": "Informatie",
+          "fr": "Informations",
+          "it": "Informazioni",
+          "es": "Información",
+          "pl": "Informacje",
+          "uk": "Інформація",
+          "zh-cn": "信息"
         }
       },
       "native": {}
@@ -124,7 +133,16 @@
       "common": {
         "name": {
           "en": "Display reachable",
-          "de": "Display erreichbar"
+          "de": "Display erreichbar",
+          "ru": "Дисплей доступен",
+          "pt": "Ecrã acessível",
+          "nl": "Scherm bereikbaar",
+          "fr": "Écran accessible",
+          "it": "Display raggiungibile",
+          "es": "Pantalla accesible",
+          "pl": "Wyświetlacz osiągalny",
+          "uk": "Дисплей доступний",
+          "zh-cn": "显示器可达"
         },
         "type": "boolean",
         "role": "indicator.connected",
@@ -140,7 +158,16 @@
       "common": {
         "name": {
           "en": "Simple IP Control connected",
-          "de": "Simple IP Control verbunden"
+          "de": "Simple IP Control verbunden",
+          "ru": "Simple IP Control подключён",
+          "pt": "Simple IP Control ligado",
+          "nl": "Simple IP Control verbonden",
+          "fr": "Simple IP Control connecté",
+          "it": "Simple IP Control connesso",
+          "es": "Simple IP Control conectado",
+          "pl": "Simple IP Control połączony",
+          "uk": "Simple IP Control підключено",
+          "zh-cn": "Simple IP Control 已连接"
         },
         "type": "boolean",
         "role": "indicator.connected",
@@ -156,7 +183,16 @@
       "common": {
         "name": {
           "en": "Last error",
-          "de": "Letzter Fehler"
+          "de": "Letzter Fehler",
+          "ru": "Последняя ошибка",
+          "pt": "Último erro",
+          "nl": "Laatste fout",
+          "fr": "Dernière erreur",
+          "it": "Ultimo errore",
+          "es": "Último error",
+          "pl": "Ostatni błąd",
+          "uk": "Остання помилка",
+          "zh-cn": "最后错误"
         },
         "type": "string",
         "role": "text",

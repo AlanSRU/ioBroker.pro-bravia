@@ -27,8 +27,6 @@ export class VideoModule implements FeatureModule {
             setMethod: 'setPictureQualitySettings',
             getVersions: ['1.1', '1.0'],
             setVersions: ['1.1', '1.0'],
-            // Sony documents that batching these with other targets can fail on some signals.
-            isolatedTargets: ['hdmiSignalFormat', 'hdmiSignalFormatVrr'],
         });
     }
 

@@ -97,8 +97,3 @@ const ERROR_KINDS: Record<number, BraviaErrorKind> = {
 export function classifyErrorCode(code: number): BraviaErrorKind {
     return ERROR_KINDS[code] ?? 'unknown';
 }
-
-/** `40004 Multiple Settings Failed` — the caller must re-read to learn which target failed. */
-export const ERROR_MULTIPLE_SETTINGS_FAILED = 40004;
-/** `40005 Display is turned off` — several services return this whenever the panel is in standby. */
-export const ERROR_DISPLAY_OFF = 40005;

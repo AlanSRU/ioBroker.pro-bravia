@@ -7,11 +7,20 @@ import { IoBrokerStateStore } from './lib/iobroker-store';
 import { BraviaRestClient } from './transport/rest-client';
 import type { SsipMessage } from './transport/ssip-protocol';
 
+/** Consecutive poll failures tolerated before `info.connection` is cleared. */
+const POLL_FAILURES_BEFORE_DISCONNECT = 2;
+
 class ProBraviaAdapter extends utils.Adapter {
     private device: BraviaDevice | null = null;
     private store: IoBrokerStateStore | null = null;
-    private pollTimer: ioBroker.Interval | undefined;
+    private pollTimer: ioBroker.Timeout | undefined;
     private pollSeconds = DEFAULT_POLL_SECONDS;
+    private polling = false;
+    /**
+     * Consecutive failed polls. `info.connection` only flips after two, so a single timeout
+     * or blip does not tell every watchdog the display has gone.
+     */
+    private pollFailures = 0;
     private retryTimer: ioBroker.Timeout | undefined;
     private unloading = false;
 
@@ -138,27 +147,56 @@ class ProBraviaAdapter extends utils.Adapter {
         }, seconds * 1000);
     }
 
+    /**
+     * Re-arming timeout rather than setInterval: a full refresh against an unresponsive
+     * display can exceed the interval, and setInterval would stack overlapping refreshes
+     * onto the REST client's serialisation queue faster than they drain.
+     */
     private startPolling(): void {
         if (this.pollTimer) {
             return;
         }
-        this.pollTimer = this.setInterval(() => {
-            void this.poll();
-        }, this.pollSeconds * 1000);
+        this.scheduleNextPoll();
         this.log.debug(`Polling the display every ${this.pollSeconds}s`);
     }
 
-    private async poll(): Promise<void> {
-        if (!this.device?.isReady || this.unloading) {
+    private scheduleNextPoll(): void {
+        if (this.unloading) {
             return;
         }
+        this.pollTimer = this.setTimeout(() => {
+            this.pollTimer = undefined;
+            void this.poll();
+        }, this.pollSeconds * 1000);
+    }
+
+    private async poll(): Promise<void> {
+        if (!this.device?.isReady || this.unloading || this.polling) {
+            return;
+        }
+        this.polling = true;
         try {
             await this.device.refresh();
+            if (this.unloading) {
+                return;
+            }
+            this.pollFailures = 0;
             await this.setState('info.connection', { val: true, ack: true });
         } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            this.log.debug(`Poll failed: ${message}`);
-            await this.setState('info.connection', { val: false, ack: true });
+            if (this.unloading) {
+                return;
+            }
+            const error = e as BraviaError;
+            this.pollFailures++;
+            if (this.pollFailures === POLL_FAILURES_BEFORE_DISCONNECT) {
+                this.log.warn(`Display is not responding: ${error.message}`);
+                await this.setState('info.connection', { val: false, ack: true });
+            } else {
+                this.log.debug(`Poll failed (${this.pollFailures}): ${error.message}`);
+            }
+        } finally {
+            this.polling = false;
+            this.scheduleNextPoll();
         }
     }
 
@@ -240,8 +278,10 @@ class ProBraviaAdapter extends utils.Adapter {
     private onUnload(callback: () => void): void {
         this.unloading = true;
         try {
+            // Stop the device first so any in-flight discovery or refresh stops writing.
+            this.device?.stop();
             if (this.pollTimer) {
-                this.clearInterval(this.pollTimer);
+                this.clearTimeout(this.pollTimer);
                 this.pollTimer = undefined;
             }
             if (this.retryTimer) {
