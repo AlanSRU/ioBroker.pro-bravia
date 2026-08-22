@@ -3,9 +3,24 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: monthly
-    open-pull-requests-limit: 5
+      # Spread load rather than hitting the top of the month with everyone else.
+      interval: cron
+      cronjob: '17 4 9 * *'
+    # Let a release settle before adopting it, to reduce supply-chain exposure.
+    cooldown:
+      default: 7
+    open-pull-requests-limit: 15
+    ignore:
+      # @types/node must track the Node baseline in package.json engines, not the
+      # latest major, or the build type-checks against APIs the runtime lacks.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: cron
+      cronjob: '23 4 9 * *'
+    cooldown:
+      default: 7
+    open-pull-requests-limit: 15
