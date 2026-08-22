@@ -116,6 +116,12 @@ Protocol notes gathered from Sony's documentation live in [docs/PROTOCOL.md](doc
 
 - Initial release
 
+## Trademarks
+
+"Sony" and "BRAVIA" are trademarks of Sony Group Corporation. This adapter is an independent,
+community-built integration and is not affiliated with, endorsed by, or supported by Sony. The
+trademarks are used only to identify the displays the adapter controls.
+
 ## License
 
 MIT License — see [LICENSE](LICENSE).
