@@ -1,8 +1,10 @@
+const assert = require('node:assert');
 const path = require('node:path');
 const { tests } = require('@iobroker/testing');
 
 // Starts a real js-controller, installs the adapter and checks it boots and shuts down
-// cleanly. It runs with no display configured, which is the case that must not crash.
+// cleanly. Runs with no display configured, which is the case that must not crash: the
+// adapter should report the misconfiguration and stay alive so the user sees it in admin.
 tests.integration(path.join(__dirname, '..'), {
     defineAdditionalTests({ suite }) {
         suite('starts without a configured display', getHarness => {
@@ -11,7 +13,7 @@ tests.integration(path.join(__dirname, '..'), {
                 const harness = getHarness();
                 await harness.changeAdapterConfig('pro-bravia', { native: { host: '' } });
                 await harness.startAdapterAndWait();
-                expect(harness.isAdapterRunning()).to.be.true;
+                assert.strictEqual(harness.isAdapterRunning(), true, 'adapter should still be running');
             });
         });
     },

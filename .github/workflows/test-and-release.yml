@@ -33,6 +33,8 @@ jobs:
     needs: [check-and-lint]
     runs-on: ${{ matrix.os }}
     strategy:
+      # One platform failing should not hide the state of the others.
+      fail-fast: false
       matrix:
         node-version: [22.x, 24.x]
         os: [ubuntu-latest, windows-latest, macos-latest]

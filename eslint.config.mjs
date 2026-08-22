@@ -23,7 +23,6 @@ export default [
                 it: 'readonly',
                 before: 'readonly',
                 after: 'readonly',
-                expect: 'readonly',
             },
         },
     },
