@@ -1,0 +1,12 @@
+docs/
+test/
+src/
+.github/
+.review/
+coverage/
+tsconfig*.json
+jest.config.js
+eslint.config.mjs
+prettier.config.mjs
+.releaseconfig.json
+CLAUDE.md

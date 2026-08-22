@@ -1,0 +1,139 @@
+{
+  "i18n": true,
+  "type": "tabs",
+  "items": {
+    "connection": {
+      "type": "panel",
+      "label": "Connection",
+      "items": {
+        "_intro": {
+          "type": "staticText",
+          "text": "connection_intro",
+          "sm": 12
+        },
+        "host": {
+          "type": "text",
+          "label": "Display address",
+          "help": "IP address or hostname of the display",
+          "placeholder": "192.168.0.14",
+          "validatorNoSaveOnError": true,
+          "validator": "!!data.host",
+          "validatorErrorText": "Enter the display IP address or hostname",
+          "sm": 12,
+          "md": 6
+        },
+        "psk": {
+          "type": "password",
+          "label": "Pre-shared key",
+          "help": "Set on the display under Network & Internet > Home network > IP control > Authentication",
+          "repeat": false,
+          "sm": 12,
+          "md": 6
+        },
+        "httpPort": {
+          "type": "number",
+          "label": "HTTP port",
+          "help": "Displays serve the REST and IRCC endpoints on port 80",
+          "min": 1,
+          "max": 65535,
+          "default": 80,
+          "sm": 6,
+          "md": 3
+        },
+        "requestTimeout": {
+          "type": "number",
+          "label": "Request timeout (s)",
+          "min": 1,
+          "max": 60,
+          "default": 5,
+          "sm": 6,
+          "md": 3
+        },
+        "pollInterval": {
+          "type": "number",
+          "label": "Poll interval (s)",
+          "help": "How often to re-read values the display cannot push",
+          "min": 5,
+          "max": 3600,
+          "default": 30,
+          "sm": 6,
+          "md": 3
+        },
+        "_test": {
+          "type": "sendTo",
+          "label": "Test connection",
+          "command": "testConnection",
+          "jsonData": "{\"host\": \"${data.host}\", \"psk\": \"${data.psk}\", \"httpPort\": ${data.httpPort}}",
+          "variant": "contained",
+          "useNative": false,
+          "sm": 12,
+          "md": 3
+        }
+      }
+    },
+    "transports": {
+      "type": "panel",
+      "label": "Control interfaces",
+      "items": {
+        "_transports_intro": {
+          "type": "staticText",
+          "text": "transports_intro",
+          "sm": 12
+        },
+        "useSsip": {
+          "type": "checkbox",
+          "label": "Use Simple IP Control",
+          "help": "Adds instant push updates for power, input, volume, mute and picture mute, and enables picture mute control",
+          "default": true,
+          "sm": 12,
+          "md": 6
+        },
+        "ssipPort": {
+          "type": "number",
+          "label": "Simple IP Control port",
+          "min": 1,
+          "max": 65535,
+          "default": 20060,
+          "hidden": "!data.useSsip",
+          "sm": 12,
+          "md": 6
+        },
+        "useIrcc": {
+          "type": "checkbox",
+          "label": "Use IRCC-IP remote emulation",
+          "help": "Exposes the display's own remote-control key set as buttons",
+          "default": true,
+          "sm": 12,
+          "md": 6
+        }
+      }
+    },
+    "wol": {
+      "type": "panel",
+      "label": "Wake-on-LAN",
+      "items": {
+        "_wol_intro": {
+          "type": "staticText",
+          "text": "wol_intro",
+          "sm": 12
+        },
+        "macAddress": {
+          "type": "text",
+          "label": "MAC address",
+          "help": "Leave blank to read it from the display automatically",
+          "placeholder": "00:11:22:33:44:55",
+          "sm": 12,
+          "md": 6
+        },
+        "broadcastAddress": {
+          "type": "text",
+          "label": "Broadcast address",
+          "help": "Leave blank to use the display's own subnet broadcast address",
+          "placeholder": "192.168.0.255",
+          "sm": 12,
+          "md": 6
+        }
+      }
+    }
+  }
+}

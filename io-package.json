@@ -1,0 +1,141 @@
+{
+  "common": {
+    "name": "pro-bravia",
+    "version": "0.0.1",
+    "news": {
+      "0.0.1": {
+        "en": "Initial release",
+        "de": "Erstveröffentlichung"
+      }
+    },
+    "title": "Sony BRAVIA Professional Displays",
+    "titleLang": {
+      "en": "Sony BRAVIA Professional Displays",
+      "de": "Sony BRAVIA Professional Displays"
+    },
+    "desc": {
+      "en": "Control and monitor Sony BRAVIA Professional Displays over REST API, Simple IP Control, IRCC-IP and Wake-on-LAN",
+      "de": "Steuerung und Überwachung von Sony BRAVIA Professional Displays über REST API, Simple IP Control, IRCC-IP und Wake-on-LAN"
+    },
+    "authors": [
+      "Alan Paris <alan.paris@scottish.rugby>"
+    ],
+    "keywords": [
+      "sony",
+      "bravia",
+      "display",
+      "signage",
+      "ssip",
+      "ircc",
+      "av"
+    ],
+    "license": "MIT",
+    "platform": "Javascript/Node.js",
+    "main": "build/main.js",
+    "mode": "daemon",
+    "type": "multimedia",
+    "compact": true,
+    "messagebox": true,
+    "icon": "pro-bravia.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/AlanSRU/ioBroker.pro-bravia/main/admin/pro-bravia.png",
+    "readme": "https://github.com/AlanSRU/ioBroker.pro-bravia/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "connectionType": "local",
+    "dataSource": "push",
+    "adminUI": {
+      "config": "json"
+    },
+    "encryptedNative": [
+      "psk"
+    ],
+    "protectedNative": [
+      "psk"
+    ],
+    "dependencies": [
+      {
+        "js-controller": ">=5.0.19"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=6.17.14"
+      }
+    ]
+  },
+  "native": {
+    "host": "",
+    "psk": "",
+    "httpPort": 80,
+    "requestTimeout": 5,
+    "pollInterval": 30,
+    "useSsip": true,
+    "ssipPort": 20060,
+    "useIrcc": true,
+    "macAddress": "",
+    "broadcastAddress": ""
+  },
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": {
+          "en": "Information",
+          "de": "Informationen"
+        }
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Display reachable",
+          "de": "Display erreichbar"
+        },
+        "type": "boolean",
+        "role": "indicator.connected",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.ssipConnection",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Simple IP Control connected",
+          "de": "Simple IP Control verbunden"
+        },
+        "type": "boolean",
+        "role": "indicator.connected",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.lastError",
+      "type": "state",
+      "common": {
+        "name": {
+          "en": "Last error",
+          "de": "Letzter Fehler"
+        },
+        "type": "string",
+        "role": "text",
+        "read": true,
+        "write": false,
+        "def": ""
+      },
+      "native": {}
+    }
+  ]
+}
