@@ -34,6 +34,28 @@ export interface StateStore {
 }
 
 /**
+ * Fill in `common.def` when the caller has not set one.
+ *
+ * Every state is expected to declare a default; without one a freshly created state reads as
+ * `null` until the display is first polled, which scripts and VIS widgets bind to as a real value.
+ */
+export function withStateDefaults(common: ioBroker.StateCommon): ioBroker.StateCommon {
+    if (common.def !== undefined) {
+        return common;
+    }
+    let def: ioBroker.StateValue;
+    if (common.type === 'boolean') {
+        def = false;
+    } else if (common.type === 'number') {
+        // Stay inside the declared range, or a discovered level would default out of bounds.
+        def = typeof common.min === 'number' ? common.min : 0;
+    } else {
+        def = '';
+    }
+    return { ...common, def };
+}
+
+/**
  * Split `a.b.c` into the parent channel ids `a` and `a.b`.
  *
  */
@@ -82,7 +104,10 @@ export class MemoryStateStore implements StateStore {
                 this.objects.set(parent, { type: 'channel', common: { name: parent.split('.').pop()! } });
             }
         }
-        this.objects.set(id, { type: 'state', common: common as unknown as Record<string, unknown> });
+        this.objects.set(id, {
+            type: 'state',
+            common: withStateDefaults(common) as unknown as Record<string, unknown>,
+        });
     }
 
     public async setAck(id: string, value: ioBroker.StateValue): Promise<void> {

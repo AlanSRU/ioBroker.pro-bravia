@@ -9,7 +9,11 @@
         "_intro": {
           "type": "staticText",
           "text": "connection_intro",
-          "sm": 12
+          "sm": 12,
+          "xs": 12,
+          "md": 12,
+          "lg": 12,
+          "xl": 12
         },
         "host": {
           "type": "text",
@@ -20,7 +24,10 @@
           "validator": "!!data.host",
           "validatorErrorText": "Enter the display IP address or hostname",
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         },
         "psk": {
           "type": "password",
@@ -28,7 +35,10 @@
           "help": "Set on the display under Network & Internet > Home network > IP control > Authentication",
           "repeat": false,
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         },
         "httpPort": {
           "type": "number",
@@ -38,7 +48,10 @@
           "max": 65535,
           "default": 80,
           "sm": 6,
-          "md": 3
+          "md": 3,
+          "xs": 12,
+          "lg": 3,
+          "xl": 3
         },
         "requestTimeout": {
           "type": "number",
@@ -47,7 +60,10 @@
           "max": 60,
           "default": 5,
           "sm": 6,
-          "md": 3
+          "md": 3,
+          "xs": 12,
+          "lg": 3,
+          "xl": 3
         },
         "pollInterval": {
           "type": "number",
@@ -57,7 +73,10 @@
           "max": 3600,
           "default": 30,
           "sm": 6,
-          "md": 3
+          "md": 3,
+          "xs": 12,
+          "lg": 3,
+          "xl": 3
         },
         "_test": {
           "type": "sendTo",
@@ -66,8 +85,11 @@
           "jsonData": "{\"host\": \"${data.host}\", \"psk\": \"${data.psk}\", \"httpPort\": ${data.httpPort}}",
           "variant": "contained",
           "useNative": false,
-          "sm": 12,
-          "md": 3
+          "sm": 6,
+          "md": 3,
+          "xs": 12,
+          "lg": 3,
+          "xl": 3
         }
       }
     },
@@ -78,7 +100,11 @@
         "_transports_intro": {
           "type": "staticText",
           "text": "transports_intro",
-          "sm": 12
+          "sm": 12,
+          "xs": 12,
+          "md": 12,
+          "lg": 12,
+          "xl": 12
         },
         "useSsip": {
           "type": "checkbox",
@@ -86,7 +112,10 @@
           "help": "Adds instant push updates for power, input, volume, mute and picture mute, and enables picture mute control",
           "default": true,
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         },
         "ssipPort": {
           "type": "number",
@@ -96,7 +125,10 @@
           "default": 20060,
           "hidden": "!data.useSsip",
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         },
         "useIrcc": {
           "type": "checkbox",
@@ -104,7 +136,10 @@
           "help": "Exposes the display's own remote-control key set as buttons",
           "default": true,
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         }
       }
     },
@@ -115,7 +150,11 @@
         "_wol_intro": {
           "type": "staticText",
           "text": "wol_intro",
-          "sm": 12
+          "sm": 12,
+          "xs": 12,
+          "md": 12,
+          "lg": 12,
+          "xl": 12
         },
         "macAddress": {
           "type": "text",
@@ -123,7 +162,10 @@
           "help": "Leave blank to read it from the display automatically",
           "placeholder": "00:11:22:33:44:55",
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         },
         "broadcastAddress": {
           "type": "text",
@@ -131,7 +173,10 @@
           "help": "Leave blank to use the display's own subnet broadcast address",
           "placeholder": "192.168.0.255",
           "sm": 12,
-          "md": 6
+          "md": 6,
+          "xs": 12,
+          "lg": 6,
+          "xl": 6
         }
       }
     }

@@ -46,7 +46,8 @@ export class SystemModule implements FeatureModule {
         await store.ensureState('info.model', {
             name: 'Model',
             type: 'string',
-            role: 'info.name',
+            // `info.name` means the device's own name/alias; the model needs `info.model`.
+            role: 'info.model',
             read: true,
             write: false,
         });

@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import * as net from 'node:net';
 
 import { BraviaError } from '../lib/errors';
+import { type TimerApi, type TimerHandle, systemTimers } from '../lib/timers';
 import {
     PARAM_NONE,
     SSIP_PORT,
@@ -33,13 +34,15 @@ export interface SsipClientOptions {
     /** First reconnect delay; doubles up to `maxReconnectDelayMs`. */
     reconnectDelayMs?: number;
     maxReconnectDelayMs?: number;
+    /** Framework timers. The adapter passes its own so pending timers die with the instance. */
+    timers?: TimerApi;
 }
 
 interface PendingCommand {
     command: string;
     resolve: (message: SsipMessage) => void;
     reject: (error: Error) => void;
-    timer: NodeJS.Timeout;
+    timer: TimerHandle;
 }
 
 export declare interface SsipClient {
@@ -54,7 +57,7 @@ export class SsipClient extends EventEmitter {
     private buffer = Buffer.alloc(0);
     private pending: PendingCommand | null = null;
     private queue: Promise<unknown> = Promise.resolve();
-    private reconnectTimer: NodeJS.Timeout | null = null;
+    private reconnectTimer: TimerHandle = null;
     private reconnectDelay: number;
     private closed = false;
     private connected = false;
@@ -64,6 +67,7 @@ export class SsipClient extends EventEmitter {
     private readonly commandTimeoutMs: number;
     private readonly initialReconnectDelay: number;
     private readonly maxReconnectDelay: number;
+    private readonly timers: TimerApi;
 
     public constructor(options: SsipClientOptions) {
         super();
@@ -73,6 +77,7 @@ export class SsipClient extends EventEmitter {
         this.initialReconnectDelay = options.reconnectDelayMs ?? 5000;
         this.maxReconnectDelay = options.maxReconnectDelayMs ?? 60000;
         this.reconnectDelay = this.initialReconnectDelay;
+        this.timers = options.timers ?? systemTimers;
     }
 
     public get isConnected(): boolean {
@@ -147,7 +152,7 @@ export class SsipClient extends EventEmitter {
                 if (this.pending && this.pending.command === message.command) {
                     const pending = this.pending;
                     this.pending = null;
-                    clearTimeout(pending.timer);
+                    this.timers.cancel(pending.timer);
                     pending.resolve(message);
                 }
             }
@@ -158,7 +163,7 @@ export class SsipClient extends EventEmitter {
         if (this.closed || this.reconnectTimer) {
             return;
         }
-        this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = this.timers.schedule(() => {
             this.reconnectTimer = null;
             this.openSocket();
         }, this.reconnectDelay);
@@ -171,7 +176,7 @@ export class SsipClient extends EventEmitter {
         }
         const pending = this.pending;
         this.pending = null;
-        clearTimeout(pending.timer);
+        this.timers.cancel(pending.timer);
         pending.reject(error);
     }
 
@@ -199,7 +204,7 @@ export class SsipClient extends EventEmitter {
                     reject(new BraviaError(`SSIP ${command}: not connected`, 'transport', undefined, command));
                     return;
                 }
-                const timer = setTimeout(() => {
+                const timer = this.timers.schedule(() => {
                     this.pending = null;
                     reject(new BraviaError(`SSIP ${command}: timed out`, 'retryable', undefined, command));
                 }, this.commandTimeoutMs);
@@ -243,7 +248,7 @@ export class SsipClient extends EventEmitter {
     public close(): void {
         this.closed = true;
         if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
+            this.timers.cancel(this.reconnectTimer);
             this.reconnectTimer = null;
         }
         this.failPending(new BraviaError('SSIP client closed', 'transport'));

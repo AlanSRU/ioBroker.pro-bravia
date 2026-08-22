@@ -9,6 +9,7 @@ import { VideoScreenModule } from './devices/videoscreen';
 import { Capabilities } from './discovery/capabilities';
 import { BraviaError } from './lib/errors';
 import type { StateStore } from './lib/state-store';
+import type { TimerApi } from './lib/timers';
 import { BraviaIrccClient } from './transport/ircc-client';
 import { BraviaRestClient } from './transport/rest-client';
 import { SsipClient } from './transport/ssip-client';
@@ -31,6 +32,8 @@ export interface BraviaDeviceOptions {
     useIrcc: boolean;
     macAddress?: string;
     broadcastAddress?: string;
+    /** Framework timers, so the SSIP reconnect backoff dies with the instance. */
+    timers?: TimerApi;
 }
 
 export class BraviaDevice {
@@ -55,7 +58,9 @@ export class BraviaDevice {
             timeoutMs: options.requestTimeoutMs,
         });
 
-        this.ssip = options.useSsip ? new SsipClient({ host: options.host, port: options.ssipPort }) : null;
+        this.ssip = options.useSsip
+            ? new SsipClient({ host: options.host, port: options.ssipPort, timers: options.timers })
+            : null;
 
         this.ircc = options.useIrcc
             ? new BraviaIrccClient({

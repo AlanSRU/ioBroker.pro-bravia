@@ -23,6 +23,7 @@ const STATE_ROLE_RULES: Record<string, RoleRule> = {
     'indicator.connected': { types: ['boolean'], read: true, write: false },
     'info.ip': { types: ['string'], read: true, write: false },
     'info.mac': { types: ['string'], read: true, write: false },
+    'info.model': { types: ['string'], read: true, write: false },
     'info.name': { types: ['string'], read: true },
     'info.serial': { types: ['string'], read: true, write: false },
     json: { types: ['string', 'json'] },
@@ -149,6 +150,72 @@ describe('created objects satisfy the repository object checker rules', () => {
                     }
                 }
                 expect(incomplete).toEqual([]);
+            });
+
+            it('gives every state a default value', () => {
+                // Without a def a new state reads null until the first poll, and scripts bind to
+                // that as though it were real data.
+                const missing: string[] = [];
+                for (const [id, object] of store.objects) {
+                    if (object.type === 'state' && object.common.def === undefined) {
+                        missing.push(id);
+                    }
+                }
+                expect(missing).toEqual([]);
+            });
+
+            it('keeps each default inside its own declared range and type', () => {
+                const wrong: string[] = [];
+                for (const [id, object] of store.objects) {
+                    if (object.type !== 'state') {
+                        continue;
+                    }
+                    const c = object.common as {
+                        type: string;
+                        def: unknown;
+                        min?: number;
+                        max?: number;
+                    };
+                    if (typeof c.def !== c.type) {
+                        wrong.push(`${id}: def is ${typeof c.def}, state type is ${c.type}`);
+                        continue;
+                    }
+                    if (c.type === 'number') {
+                        const def = c.def as number;
+                        if ((typeof c.min === 'number' && def < c.min) || (typeof c.max === 'number' && def > c.max)) {
+                            wrong.push(`${id}: def ${def} outside ${c.min}..${c.max}`);
+                        }
+                    }
+                }
+                expect(wrong).toEqual([]);
+            });
+
+            it('puts each specific info.* role only on the state it names', () => {
+                // A role can be valid and still wrong: info.name means the device's own name, so
+                // it must not sit on a model, serial or address state.
+                const expected: Record<string, string> = {
+                    'info.model': 'info.model',
+                    'info.serial': 'info.serial',
+                    'info.macAddress': 'info.mac',
+                    'info.ipAddress': 'info.ip',
+                    'info.deviceName': 'info.name',
+                };
+                const wrong: string[] = [];
+                for (const [id, role] of Object.entries(expected)) {
+                    const object = store.objects.get(id);
+                    if (object && object.common.role !== role) {
+                        wrong.push(`${id}: expected role "${role}", got "${String(object.common.role)}"`);
+                    }
+                }
+                // And no other state may borrow a specific info.* role.
+                const specific = new Set(Object.values(expected));
+                for (const [id, object] of store.objects) {
+                    const role = object.common.role as string;
+                    if (object.type === 'state' && specific.has(role) && expected[id] !== role) {
+                        wrong.push(`${id}: borrows specific role "${role}"`);
+                    }
+                }
+                expect(wrong).toEqual([]);
             });
 
             it('creates every intermediate parent object (repochecker E3009)', () => {

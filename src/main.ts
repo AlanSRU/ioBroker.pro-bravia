@@ -2,6 +2,7 @@ import * as utils from '@iobroker/adapter-core';
 
 import { BraviaDevice } from './device';
 import type { BraviaError } from './lib/errors';
+import { DEFAULT_POLL_SECONDS, pollSecondsFrom, timeoutSecondsFrom } from './lib/config';
 import { IoBrokerStateStore } from './lib/iobroker-store';
 import { BraviaRestClient } from './transport/rest-client';
 import type { SsipMessage } from './transport/ssip-protocol';
@@ -10,6 +11,7 @@ class ProBraviaAdapter extends utils.Adapter {
     private device: BraviaDevice | null = null;
     private store: IoBrokerStateStore | null = null;
     private pollTimer: ioBroker.Interval | undefined;
+    private pollSeconds = DEFAULT_POLL_SECONDS;
     private retryTimer: ioBroker.Timeout | undefined;
     private unloading = false;
 
@@ -34,18 +36,24 @@ class ProBraviaAdapter extends utils.Adapter {
             );
         }
 
+        this.pollSeconds = pollSecondsFrom(this.config.pollInterval);
+
         this.store = new IoBrokerStateStore(this);
         this.device = new BraviaDevice(
             {
                 host,
                 psk: this.config.psk ?? '',
                 httpPort: this.config.httpPort || 80,
-                requestTimeoutMs: (this.config.requestTimeout || 5) * 1000,
+                requestTimeoutMs: timeoutSecondsFrom(this.config.requestTimeout) * 1000,
                 useSsip: this.config.useSsip !== false,
                 ssipPort: this.config.ssipPort || 20060,
                 useIrcc: this.config.useIrcc !== false,
                 macAddress: this.config.macAddress || undefined,
                 broadcastAddress: this.config.broadcastAddress || undefined,
+                timers: {
+                    schedule: (callback, milliseconds) => this.setTimeout(callback, milliseconds),
+                    cancel: handle => this.clearTimeout(handle as ioBroker.Timeout),
+                },
             },
             this.store,
         );
@@ -90,11 +98,20 @@ class ProBraviaAdapter extends utils.Adapter {
 
         try {
             await this.device.initialise();
+            if (this.unloading) {
+                return;
+            }
             await this.setState('info.connection', { val: true, ack: true });
             this.log.info(`Connected to display at ${this.config.host}`);
             await this.device.refresh();
+            if (this.unloading) {
+                return;
+            }
             this.startPolling();
         } catch (e) {
+            if (this.unloading) {
+                return;
+            }
             const error = e as BraviaError;
             await this.setState('info.connection', { val: false, ack: true });
             if (error.kind === 'auth') {
@@ -113,7 +130,8 @@ class ProBraviaAdapter extends utils.Adapter {
         if (this.retryTimer || this.unloading) {
             return;
         }
-        const seconds = Math.max(10, this.config.pollInterval || 30);
+        // Retry no faster than the poll interval, and never faster than 10s.
+        const seconds = Math.max(10, this.pollSeconds);
         this.retryTimer = this.setTimeout(() => {
             this.retryTimer = undefined;
             void this.initialiseDevice();
@@ -124,11 +142,10 @@ class ProBraviaAdapter extends utils.Adapter {
         if (this.pollTimer) {
             return;
         }
-        const seconds = Math.max(5, this.config.pollInterval || 30);
         this.pollTimer = this.setInterval(() => {
             void this.poll();
-        }, seconds * 1000);
-        this.log.debug(`Polling the display every ${seconds}s`);
+        }, this.pollSeconds * 1000);
+        this.log.debug(`Polling the display every ${this.pollSeconds}s`);
     }
 
     private async poll(): Promise<void> {

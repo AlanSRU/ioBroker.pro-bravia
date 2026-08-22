@@ -9,7 +9,10 @@
 Control and monitor **Sony BRAVIA Professional Displays** (the FW-xxBZ commercial signage range) from
 ioBroker.
 
-This adapter targets the *professional* displays rather than domestic Android TVs. It speaks all four
+This adapter targets the *professional* displays rather than domestic Android TVs — see Sony's
+[BRAVIA Professional Displays](https://pro.sony/ue_US/products/professional-displays) product range
+and the [Professional Displays Knowledge Center](https://pro-bravia.sony.net/remote-display-control/)
+for the control protocols it implements. It speaks all four
 of Sony's control interfaces and, crucially, **discovers what your particular display supports at
 runtime** instead of shipping a fixed per-model table — the professional range varies by model,
 firmware and EU RED-DA compliance variant.
@@ -25,6 +28,10 @@ firmware and EU RED-DA compliance variant.
 
 Simple IP Control and IRCC-IP can each be switched off in the instance settings if you would rather
 run REST-only.
+
+## Installation
+
+Install from the ioBroker admin **Adapters** tab, then create an instance.
 
 ## Setup
 

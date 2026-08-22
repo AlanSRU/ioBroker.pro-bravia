@@ -14,4 +14,17 @@ export default [
             'jsdoc/require-returns': 'off',
         },
     },
+    {
+        // The package and integration suites run under mocha, not jest.
+        files: ['test/package.js', 'test/integration.js'],
+        languageOptions: {
+            globals: {
+                describe: 'readonly',
+                it: 'readonly',
+                before: 'readonly',
+                after: 'readonly',
+                expect: 'readonly',
+            },
+        },
+    },
 ];

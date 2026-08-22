@@ -5,17 +5,43 @@
     "news": {
       "0.0.1": {
         "en": "Initial release",
-        "de": "Erstveröffentlichung"
+        "de": "Erstveröffentlichung",
+        "ru": "Первый выпуск",
+        "pt": "Versão inicial",
+        "nl": "Eerste release",
+        "fr": "Version initiale",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Перший випуск",
+        "zh-cn": "首次发布"
       }
     },
-    "title": "Sony BRAVIA Professional Displays",
     "titleLang": {
       "en": "Sony BRAVIA Professional Displays",
-      "de": "Sony BRAVIA Professional Displays"
+      "de": "Sony BRAVIA Professional Displays",
+      "ru": "Профессиональные дисплеи Sony BRAVIA",
+      "pt": "Ecrãs profissionais Sony BRAVIA",
+      "nl": "Sony BRAVIA professionele schermen",
+      "fr": "Écrans professionnels Sony BRAVIA",
+      "it": "Display professionali Sony BRAVIA",
+      "es": "Pantallas profesionales Sony BRAVIA",
+      "pl": "Wyświetlacze profesjonalne Sony BRAVIA",
+      "uk": "Професійні дисплеї Sony BRAVIA",
+      "zh-cn": "索尼 BRAVIA 商用显示器"
     },
     "desc": {
       "en": "Control and monitor Sony BRAVIA Professional Displays over REST API, Simple IP Control, IRCC-IP and Wake-on-LAN",
-      "de": "Steuerung und Überwachung von Sony BRAVIA Professional Displays über REST API, Simple IP Control, IRCC-IP und Wake-on-LAN"
+      "de": "Steuerung und Überwachung von Sony BRAVIA Professional Displays über REST API, Simple IP Control, IRCC-IP und Wake-on-LAN",
+      "ru": "Управление и мониторинг профессиональных дисплеев Sony BRAVIA через REST API, Simple IP Control, IRCC-IP и Wake-on-LAN",
+      "pt": "Controlo e monitorização de ecrãs profissionais Sony BRAVIA através de REST API, Simple IP Control, IRCC-IP e Wake-on-LAN",
+      "nl": "Bediening en bewaking van Sony BRAVIA professionele schermen via REST API, Simple IP Control, IRCC-IP en Wake-on-LAN",
+      "fr": "Commande et supervision des écrans professionnels Sony BRAVIA via REST API, Simple IP Control, IRCC-IP et Wake-on-LAN",
+      "it": "Controllo e monitoraggio dei display professionali Sony BRAVIA tramite REST API, Simple IP Control, IRCC-IP e Wake-on-LAN",
+      "es": "Control y monitorización de pantallas profesionales Sony BRAVIA mediante REST API, Simple IP Control, IRCC-IP y Wake-on-LAN",
+      "pl": "Sterowanie i monitorowanie wyświetlaczy profesjonalnych Sony BRAVIA przez REST API, Simple IP Control, IRCC-IP i Wake-on-LAN",
+      "uk": "Керування та моніторинг професійних дисплеїв Sony BRAVIA через REST API, Simple IP Control, IRCC-IP та Wake-on-LAN",
+      "zh-cn": "通过 REST API、Simple IP Control、IRCC-IP 和网络唤醒控制并监视索尼 BRAVIA 商用显示器"
     },
     "authors": [
       "Alan Paris <alan.paris@scottish.rugby>"
@@ -29,9 +55,7 @@
       "ircc",
       "av"
     ],
-    "license": "MIT",
     "platform": "Javascript/Node.js",
-    "main": "build/main.js",
     "mode": "daemon",
     "type": "multimedia",
     "compact": true,
@@ -47,23 +71,28 @@
     "adminUI": {
       "config": "json"
     },
-    "encryptedNative": [
-      "psk"
-    ],
-    "protectedNative": [
-      "psk"
-    ],
     "dependencies": [
       {
-        "js-controller": ">=5.0.19"
+        "js-controller": ">=6.0.11"
       }
     ],
     "globalDependencies": [
       {
-        "admin": ">=6.17.14"
+        "admin": ">=7.6.17"
       }
-    ]
+    ],
+    "licenseInformation": {
+      "license": "MIT",
+      "type": "free"
+    },
+    "nogit": true
   },
+  "encryptedNative": [
+    "psk"
+  ],
+  "protectedNative": [
+    "psk"
+  ],
   "native": {
     "host": "",
     "psk": "",

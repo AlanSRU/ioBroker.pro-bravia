@@ -1,6 +1,6 @@
 import type * as utils from '@iobroker/adapter-core';
 
-import { type Logger, type StateStore, parentIds } from './state-store';
+import { type Logger, type StateStore, parentIds, withStateDefaults } from './state-store';
 
 /**
  * {@link StateStore} backed by a live ioBroker adapter.
@@ -52,8 +52,9 @@ export class IoBrokerStateStore implements StateStore {
         this.created.add(id);
     }
 
-    public async ensureState(id: string, common: ioBroker.StateCommon): Promise<void> {
+    public async ensureState(id: string, rawCommon: ioBroker.StateCommon): Promise<void> {
         await this.ensureParents(id);
+        const common = withStateDefaults(rawCommon);
         await this.adapter.setObjectNotExistsAsync(id, { type: 'state', common, native: {} });
         // setObjectNotExistsAsync never updates an existing object, so a display whose candidate
         // list changed (new firmware, different input) would keep a stale range or state list.

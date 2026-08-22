@@ -1,37 +1,56 @@
+# Mirrors the ioBroker.example workflow so the repository checks pass.
 name: Test and Release
 
 on:
   push:
-    branches: [main]
-    tags: ['v*.*.*']
-  pull_request:
-    branches: [main]
+    branches:
+      - main
+    tags:
+      # Normal releases
+      - 'v?[0-9]+.[0-9]+.[0-9]+'
+      # Pre-releases
+      - 'v?[0-9]+.[0-9]+.[0-9]+-**'
+  pull_request: {}
+
+# Cancel superseded runs on the same ref rather than letting them pile up.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check-and-lint:
+    if: contains(github.event.head_commit.message, '[skip ci]') == false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ioBroker/testing-action-check@v1
         with:
-          node-version: 20.x
-          cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm run lint
+          node-version: '22.x'
+          type: 'js'
+          lint: true
 
-  unit-tests:
+  adapter-tests:
+    if: contains(github.event.head_commit.message, '[skip ci]') == false
     needs: [check-and-lint]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [20.x, 22.x, 24.x]
-        os: [ubuntu-latest]
-        include:
-          - node-version: 20.x
-            os: windows-latest
-          - node-version: 20.x
-            os: macos-latest
+        node-version: [22.x, 24.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: ioBroker/testing-action-adapter@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+          os: ${{ matrix.os }}
+          build: true
+
+  # The jest suite covers the transports, discovery and the mock-display integration.
+  unit-tests:
+    if: contains(github.event.head_commit.message, '[skip ci]') == false
+    needs: [check-and-lint]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x, 24.x]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,22 +58,19 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
-      - run: npx jest
-      - run: npm run test:package
+      - run: npx jest --ci
 
   deploy:
-    needs: [unit-tests]
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [adapter-tests, unit-tests]
+    if: |
+      contains(github.event.head_commit.message, '[skip ci]') == false &&
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ioBroker/testing-action-deploy@v1
         with:
-          node-version: 20.x
-          cache: npm
-          registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm run build
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          node-version: '24.x'
+          build: true
+          npm-token: ${{ secrets.NPM_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

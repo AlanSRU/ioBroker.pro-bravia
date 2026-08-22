@@ -1,6 +1,7 @@
 import * as dgram from 'node:dgram';
 
 import { BraviaError } from '../lib/errors';
+import { type TimerApi, delay as wait } from '../lib/timers';
 
 /**
  * Wake-on-LAN. A suspended display stops its HTTP server entirely, so neither REST nor IRCC can
@@ -38,6 +39,8 @@ export interface WakeOptions {
     /** Sony advises repeating the packet; a suspended panel can miss the first. */
     repeat?: number;
     repeatDelayMs?: number;
+    /** Framework timers, so the inter-packet wait is owned by the adapter. */
+    timers?: TimerApi;
 }
 
 export async function wake(mac: string, options: WakeOptions = {}): Promise<void> {
@@ -45,7 +48,7 @@ export async function wake(mac: string, options: WakeOptions = {}): Promise<void
     const address = options.broadcastAddress || DEFAULT_BROADCAST;
     const port = options.port ?? WOL_PORT;
     const repeat = Math.max(1, options.repeat ?? 3);
-    const delay = options.repeatDelayMs ?? 100;
+    const delayMs = options.repeatDelayMs ?? 100;
 
     const socket = dgram.createSocket('udp4');
     try {
@@ -66,7 +69,7 @@ export async function wake(mac: string, options: WakeOptions = {}): Promise<void
                 socket.send(packet, port, address, error => (error ? reject(error) : resolve()));
             });
             if (attempt < repeat - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
+                await wait(delayMs, options.timers);
             }
         }
     } catch (e) {
