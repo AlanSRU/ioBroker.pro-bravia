@@ -26,6 +26,8 @@ export class AudioModule implements FeatureModule {
     public readonly name = 'audio';
 
     private outputs: string[] = [];
+    /** Output ids whose state objects actually exist; empty until discovery has succeeded. */
+    private readonly createdOutputs = new Set<string>();
     private primary = PRIMARY_TARGET;
     private setVolumeVersion = '1.0';
     private readonly speakerSettings: SettingsGroup;
@@ -128,6 +130,7 @@ export class AudioModule implements FeatureModule {
                     continue;
                 }
                 const id = sanitiseId(entry.target);
+                this.createdOutputs.add(id);
                 await store.ensureChannel(`audio.outputs.${id}`, entry.target);
                 await store.ensureState(`audio.outputs.${id}.volume`, {
                     name: `${entry.target} volume`,
@@ -176,11 +179,13 @@ export class AudioModule implements FeatureModule {
                 continue;
             }
             const id = sanitiseId(entry.target);
-            if (typeof entry.volume === 'number') {
-                await store.setAck(`audio.outputs.${id}.volume`, entry.volume);
-            }
-            if (typeof entry.mute === 'boolean') {
-                await store.setAck(`audio.outputs.${id}.mute`, entry.mute);
+            if (this.createdOutputs.has(id)) {
+                if (typeof entry.volume === 'number') {
+                    await store.setAck(`audio.outputs.${id}.volume`, entry.volume);
+                }
+                if (typeof entry.mute === 'boolean') {
+                    await store.setAck(`audio.outputs.${id}.mute`, entry.mute);
+                }
             }
             if (entry.target === this.primary) {
                 if (typeof entry.volume === 'number') {
@@ -258,7 +263,9 @@ export class AudioModule implements FeatureModule {
             const value = parseNumericAnswer(message.parameter);
             if (value !== null) {
                 await store.setAck('audio.volume', value);
-                await store.setAck(`audio.outputs.${primaryId}.volume`, value);
+                if (this.createdOutputs.has(primaryId)) {
+                    await store.setAck(`audio.outputs.${primaryId}.volume`, value);
+                }
             }
             return true;
         }
@@ -266,7 +273,9 @@ export class AudioModule implements FeatureModule {
             const value = parseNumericAnswer(message.parameter);
             if (value !== null) {
                 await store.setAck('audio.mute', value === 1);
-                await store.setAck(`audio.outputs.${primaryId}.mute`, value === 1);
+                if (this.createdOutputs.has(primaryId)) {
+                    await store.setAck(`audio.outputs.${primaryId}.mute`, value === 1);
+                }
             }
             return true;
         }

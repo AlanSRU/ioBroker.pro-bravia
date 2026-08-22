@@ -178,6 +178,11 @@ export class AvContentModule implements FeatureModule {
                 continue;
             }
             const id = this.idFor(input);
+            // Only ids this module created have objects. A display that was in standby at
+            // startup reports its inputs for the first time here, before the channels exist.
+            if (!this.idToUri.has(id)) {
+                continue;
+            }
             await store.setAck(`input.sources.${id}.uri`, input.uri);
             await store.setAck(`input.sources.${id}.title`, input.title ?? '');
             await store.setAck(`input.sources.${id}.label`, input.label ?? '');

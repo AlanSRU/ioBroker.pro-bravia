@@ -1,5 +1,6 @@
 import type { Capabilities } from '../discovery/capabilities';
 import type { StateStore } from '../lib/state-store';
+import type { TimerApi } from '../lib/timers';
 import type { BraviaIrccClient } from '../transport/ircc-client';
 import type { BraviaRestClient } from '../transport/rest-client';
 import type { SsipClient } from '../transport/ssip-client';
@@ -21,6 +22,8 @@ export interface DeviceContext {
     capabilities: Capabilities;
     store: StateStore;
     config: DeviceConfig;
+    /** Framework timers, so nothing a module schedules can outlive the instance. */
+    timers?: TimerApi;
     /** Record the most recent failure for `info.lastError`. */
     reportError(error: unknown, context: string): void;
 }

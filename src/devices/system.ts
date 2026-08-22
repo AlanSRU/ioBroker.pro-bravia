@@ -463,7 +463,11 @@ export class SystemModule implements FeatureModule {
                 'badRequest',
             );
         }
-        await wake(mac, { broadcastAddress: this.broadcastAddress ?? this.ctx.config.broadcastAddress });
+        await wake(mac, {
+            broadcastAddress: this.broadcastAddress ?? this.ctx.config.broadcastAddress,
+            // Framework timers, so the inter-packet waits cannot outlive the instance.
+            timers: this.ctx.timers,
+        });
     }
 
     public async onNotify(message: SsipMessage): Promise<boolean> {

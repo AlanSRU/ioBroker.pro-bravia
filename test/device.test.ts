@@ -279,6 +279,23 @@ describe('BraviaDevice against a mock display', () => {
             const warnings = store.logs.filter(line => line.startsWith('warn:'));
             expect(new Set(warnings).size).toBe(warnings.length);
         });
+
+        it('does not repeat a warning for a call that keeps failing on a reachable display', async () => {
+            // The display answers getPowerStatus but one call fails persistently - a real case
+            // for these displays, e.g. getPlayingContentInfo while a signage app is foregrounded.
+            await build(new MockBraviaDisplay({ unsupportedMethods: [] }));
+            display.failMethod = 'getPlayingContentInfo';
+
+            for (let i = 0; i < 4; i++) {
+                await device.refresh();
+            }
+
+            const warnings = store.logs.filter(
+                line => line.startsWith('warn:') && line.includes('getPlayingContentInfo'),
+            );
+            // Once, not once per poll - otherwise it is ~2,880 identical lines a day.
+            expect(warnings).toHaveLength(1);
+        });
     });
 
     describe('stop() halts work in flight', () => {
@@ -380,6 +397,38 @@ describe('BraviaDevice against a mock display', () => {
         it('omits the reboot button when the display cannot reboot', async () => {
             await build(new MockBraviaDisplay({ unsupportedMethods: ['requestReboot'] }));
             expect(store.objects.has('power.reboot')).toBe(false);
+        });
+    });
+
+    describe('a display that is in standby at adapter start', () => {
+        beforeEach(async () => {
+            await build(new MockBraviaDisplay({ powerOn: false }));
+        });
+
+        it('completes the state tree once the display is switched on', async () => {
+            // In standby the display refuses everything except the system basics, so discovery
+            // comes back empty. getPowerStatus still answers, so nothing throws and nothing
+            // reschedules — the tree must be completed when the panel wakes.
+            expect(store.objects.has('input.sources.hdmi1')).toBe(false);
+
+            display.setPower(true);
+            await device.refresh();
+
+            expect(store.objects.has('input.sources.hdmi1')).toBe(true);
+            expect(store.objects.has('audio.outputs.speaker.volume')).toBe(true);
+            expect(store.objects.has('video.picture.color')).toBe(true);
+            expect(store.objects.get('input.select')?.common.states).toMatchObject({
+                'extInput:hdmi?port=1': 'Playout PC',
+            });
+        });
+
+        it('never writes a value to an id it has not created', async () => {
+            display.setPower(true);
+            await device.refresh();
+            await device.refresh();
+
+            const orphans = [...store.values.keys()].filter(id => !store.objects.has(id));
+            expect(orphans).toEqual([]);
         });
     });
 

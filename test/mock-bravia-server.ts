@@ -61,6 +61,25 @@ export interface MockDisplayOptions {
     silentCommands?: string[];
 }
 
+/**
+ * What a BRAVIA still answers with the panel in standby. `getPowerStatus` in particular keeps
+ * working — that is the whole point of it — so a liveness probe built on it cannot tell standby
+ * apart from a fully awake display.
+ */
+const STANDBY_AVAILABLE = new Set([
+    'guide.getSupportedApiInfo',
+    'system.getPowerStatus',
+    'system.setPowerStatus',
+    'system.getSystemInformation',
+    'system.getNetworkSettings',
+    'system.getInterfaceInformation',
+    'system.getSystemSupportedFunction',
+    'system.getRemoteControllerInfo',
+    'system.getWolMode',
+    'system.setWolMode',
+    'system.requestReboot',
+]);
+
 const numericCandidate = (min: number, max: number, step = 1): SettingCandidate[] => [{ min, max, step }];
 const enumCandidate = (...values: string[]): SettingCandidate[] => values.map(value => ({ value }));
 
@@ -93,6 +112,8 @@ export class MockBraviaDisplay {
         parameter: string;
     }[] = [];
 
+    /** Force one method to keep failing, to exercise repeat-failure handling. */
+    public failMethod: string | null = null;
     public power = false;
     public volume = 20;
     public audioMute = false;
@@ -256,6 +277,9 @@ export class MockBraviaDisplay {
             if (this.unsupportedMethods.has(method)) {
                 return this.sendJson(res, 200, { error: [12, 'No Such Method'], id });
             }
+            if (this.failMethod === method) {
+                return this.sendJson(res, 200, { error: [7, 'Illegal State'], id });
+            }
 
             try {
                 const result = this.dispatch(service, method, params);
@@ -291,9 +315,10 @@ export class MockBraviaDisplay {
     private dispatch(service: string, method: string, params: unknown[]): unknown {
         const arg = (params[0] ?? {}) as Record<string, unknown>;
 
-        // Most control methods are refused outright while the panel is in standby.
-        const needsPower = ['setPlayContent', 'setActiveApp', 'terminateApps', 'setPictureQualitySettings'];
-        if (!this.power && needsPower.includes(method)) {
+        // In standby the panel answers only the system-level basics; everything to do with
+        // audio, video, inputs and apps is refused with 40005. Modelling this matters: an
+        // adapter that starts while the display is off sees empty discovery, not a failure.
+        if (!this.power && !STANDBY_AVAILABLE.has(`${service}.${method}`)) {
             throw new MockApiError(40005, 'Display is turned off');
         }
 
@@ -435,9 +460,6 @@ export class MockBraviaDisplay {
                     ],
                 ];
             case 'avContent.getPlayingContentInfo':
-                if (!this.power) {
-                    throw new MockApiError(40005, 'Display is turned off');
-                }
                 return [
                     {
                         uri: `extInput:hdmi?port=${this.input.port}`,

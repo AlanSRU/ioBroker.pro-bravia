@@ -48,6 +48,14 @@ export class BraviaDevice {
     private ready = false;
     private stopped = false;
     /**
+     * Discovery only returns anything meaningful while the panel is on: in standby the display
+     * answers `getPowerStatus` normally but refuses audio, video, input and app queries with
+     * `40005`. When that happens the tree is a stub, and it must be rebuilt once the display wakes.
+     */
+    private discoveryPending = false;
+    private sawDisplayOff = false;
+    private probeFailing = false;
+    /**
      * Contexts already reported at warn level. A display that is unplugged fails ~9 calls per
      * poll; without this the log fills with identical lines indefinitely.
      */
@@ -90,6 +98,7 @@ export class BraviaDevice {
                 macAddress: this.options.macAddress,
                 broadcastAddress: this.options.broadcastAddress,
             },
+            timers: this.options.timers,
             reportError: (error, context) => this.reportError(error, context),
         };
     }
@@ -102,10 +111,24 @@ export class BraviaDevice {
      * is unreachable. This single unguarded call is the liveness signal `info.connection`
      * is driven from, and it is also what surfaces a wrong pre-shared key as an auth error.
      */
-    public async probe(): Promise<void> {
-        await this.rest.call('system', 'getPowerStatus');
-        // Reaching the display again makes previously reported failures newsworthy once more.
-        this.reportedContexts.clear();
+    public async probe(): Promise<boolean> {
+        let status: string;
+        try {
+            const result = await this.rest.callFirst<{ status?: string }>('system', 'getPowerStatus');
+            status = result.status ?? '';
+        } catch (e) {
+            this.probeFailing = true;
+            throw e;
+        }
+
+        // Only a genuine unreachable -> reachable transition makes old failures newsworthy again.
+        // Clearing on every successful probe would reset the set before it was ever consulted,
+        // leaving the de-duplication inert and the warning repeating on every poll.
+        if (this.probeFailing) {
+            this.probeFailing = false;
+            this.reportedContexts.clear();
+        }
+        return status === 'active';
     }
 
     /** Stop all further work. Called from `onUnload` before the transports are torn down. */
@@ -122,7 +145,7 @@ export class BraviaDevice {
     public async initialise(): Promise<void> {
         // Must come first: Capabilities.discover() falls back to "assume everything supported"
         // when the display does not answer, so on its own it hides an unreachable display.
-        await this.probe();
+        const active = await this.probe();
         this.capabilities = await Capabilities.discover(this.rest);
         if (this.capabilities.assumed) {
             this.store.log.warn(
@@ -144,17 +167,14 @@ export class BraviaDevice {
 
         this.modules = [system, audio, video, avContent, videoScreen, appControl, remote];
 
-        for (const module of this.modules) {
-            // Re-checked every iteration: discovery can run for a long time against a slow
-            // display, and a Save in admin restarts the instance underneath it.
-            if (this.stopped) {
-                return;
-            }
-            try {
-                await module.init();
-            } catch (e) {
-                this.reportError(e, `${module.name}.init`);
-            }
+        await this.runModuleInit();
+        // A display in standby yields an empty tree without failing, so mark it for a rebuild.
+        this.discoveryPending = !active || this.sawDisplayOff;
+        if (this.discoveryPending) {
+            this.store.log.info(
+                'The display is in standby, so it could not report its capabilities yet; ' +
+                    'discovery will complete automatically once it is switched on.',
+            );
         }
 
         this.writeHandlers.clear();
@@ -171,13 +191,39 @@ export class BraviaDevice {
         this.ready = true;
     }
 
+    /** Create objects for every module. Idempotent, so it can be re-run when the display wakes. */
+    private async runModuleInit(): Promise<void> {
+        this.sawDisplayOff = false;
+        for (const module of this.modules) {
+            // Re-checked every iteration: discovery can run for a long time against a slow
+            // display, and a Save in admin restarts the instance underneath it.
+            if (this.stopped) {
+                return;
+            }
+            try {
+                await module.init();
+            } catch (e) {
+                this.reportError(e, `${module.name}.init`);
+            }
+        }
+    }
+
     /** Re-read every value the display exposes. */
     public async refresh(): Promise<void> {
         if (!this.ready || this.stopped) {
             return;
         }
         // Rejects when the display is unreachable, so the caller can act on it.
-        await this.probe();
+        const active = await this.probe();
+
+        // Finish the discovery that standby prevented, before any module writes values that
+        // would otherwise land on objects that were never created.
+        if (active && this.discoveryPending) {
+            this.store.log.info('Display is on; completing the capability discovery it refused in standby');
+            await this.runModuleInit();
+            this.discoveryPending = this.sawDisplayOff;
+        }
+
         for (const module of this.modules) {
             if (this.stopped) {
                 return;
@@ -240,6 +286,7 @@ export class BraviaDevice {
         // A display in standby refuses most calls by design; log that at debug so a powered-down
         // screen does not fill the log with warnings.
         if (braviaError?.kind === 'displayOff') {
+            this.sawDisplayOff = true;
             this.store.log.debug(`${context}: ${message}`);
             return;
         }
