@@ -36,3 +36,24 @@ export const pollSecondsFrom = (value: unknown): number =>
 
 export const timeoutSecondsFrom = (value: unknown): number =>
     clampSeconds(value, MIN_TIMEOUT_SECONDS, MAX_TIMEOUT_SECONDS, DEFAULT_TIMEOUT_SECONDS);
+
+/** Startup retry bounds, in seconds. */
+export const MIN_RETRY_SECONDS = 10;
+export const MAX_RETRY_SECONDS = 300;
+
+/**
+ * Next startup-retry delay.
+ *
+ * Doubles from a floor of the poll interval (never faster than {@link MIN_RETRY_SECONDS}) up to
+ * {@link MAX_RETRY_SECONDS}, so an unreachable display is not hammered every 30 s all night, but
+ * one that comes back is still picked up within a few minutes.
+ *
+ * @param current the previous delay, or 0 when this is the first failure of a run
+ */
+export function nextRetrySeconds(current: number, pollSeconds: number): number {
+    const floor = Math.max(MIN_RETRY_SECONDS, pollSeconds);
+    if (current <= 0) {
+        return floor;
+    }
+    return Math.min(current * 2, MAX_RETRY_SECONDS);
+}

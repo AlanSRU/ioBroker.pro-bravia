@@ -2,7 +2,7 @@ import * as utils from '@iobroker/adapter-core';
 
 import { BraviaDevice } from './device';
 import type { BraviaError } from './lib/errors';
-import { DEFAULT_POLL_SECONDS, pollSecondsFrom, timeoutSecondsFrom } from './lib/config';
+import { DEFAULT_POLL_SECONDS, nextRetrySeconds, pollSecondsFrom, timeoutSecondsFrom } from './lib/config';
 import { IoBrokerStateStore } from './lib/iobroker-store';
 import { BraviaRestClient } from './transport/rest-client';
 import type { SsipMessage } from './transport/ssip-protocol';
@@ -21,6 +21,10 @@ class ProBraviaAdapter extends utils.Adapter {
      * or blip does not tell every watchdog the display has gone.
      */
     private pollFailures = 0;
+    /** Current startup-retry delay, doubling on each failure. Zero means "not yet failing". */
+    private retryDelaySeconds = 0;
+    /** Whether the current run of startup failures has already been reported at warn/error. */
+    private startupFailureLogged = false;
     private retryTimer: ioBroker.Timeout | undefined;
     private unloading = false;
 
@@ -110,6 +114,8 @@ class ProBraviaAdapter extends utils.Adapter {
             if (this.unloading) {
                 return;
             }
+            this.retryDelaySeconds = 0;
+            this.startupFailureLogged = false;
             await this.setState('info.connection', { val: true, ack: true });
             this.log.info(`Connected to display at ${this.config.host}`);
             await this.device.refresh();
@@ -123,28 +129,42 @@ class ProBraviaAdapter extends utils.Adapter {
             }
             const error = e as BraviaError;
             await this.setState('info.connection', { val: false, ack: true });
-            if (error.kind === 'auth') {
-                this.log.error(
-                    `The display rejected the pre-shared key (${error.message}). ` +
-                        'Check Network & Internet > Home network > IP control > Authentication on the display.',
-                );
+
+            // Report the first failure of a run properly, then drop to debug. A display that is
+            // off at the wall, or a not-yet-corrected pre-shared key, would otherwise repeat the
+            // same line every retry for as long as the instance runs.
+            if (!this.startupFailureLogged) {
+                this.startupFailureLogged = true;
+                if (error.kind === 'auth') {
+                    this.log.error(
+                        `The display rejected the pre-shared key (${error.message}). ` +
+                            'Check Network & Internet > Home network > IP control > Authentication on the display. ' +
+                            'The adapter will keep retrying, so no restart is needed once it is corrected.',
+                    );
+                } else {
+                    this.log.warn(`Could not reach the display: ${error.message}. Retrying in the background.`);
+                }
             } else {
-                this.log.warn(`Could not initialise the display: ${error.message}. Retrying shortly.`);
+                this.log.debug(`Display still unreachable: ${error.message}`);
             }
             this.scheduleRetry();
         }
     }
 
+    /**
+     * Back off between startup attempts rather than hammering a display that is switched off.
+     * Grows from the poll interval up to a ceiling, so a display that is only unplugged
+     * overnight is still picked up within a few minutes of coming back.
+     */
     private scheduleRetry(): void {
         if (this.retryTimer || this.unloading) {
             return;
         }
-        // Retry no faster than the poll interval, and never faster than 10s.
-        const seconds = Math.max(10, this.pollSeconds);
+        this.retryDelaySeconds = nextRetrySeconds(this.retryDelaySeconds, this.pollSeconds);
         this.retryTimer = this.setTimeout(() => {
             this.retryTimer = undefined;
             void this.initialiseDevice();
-        }, seconds * 1000);
+        }, this.retryDelaySeconds * 1000);
     }
 
     /**
