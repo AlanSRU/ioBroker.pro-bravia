@@ -117,7 +117,8 @@ Protocol notes gathered from Sony's documentation live in [docs/PROTOCOL.md](doc
 ### **WORK IN PROGRESS**
 
 - Wake-on-LAN now works when the display was already suspended when the adapter started
-- A configured Wake-on-LAN broadcast address now takes precedence over the one the display reports
+- A configured Wake-on-LAN MAC or broadcast address now takes precedence over the one the display reports
+- The adapter now reconnects within 5 minutes of a display coming back, including right after Wake-on-LAN and with long poll intervals
 - Object IDs built from app titles now use only characters ioBroker accepts
 - Dependency updates; tested on Node.js 22, 24 and 26
 
