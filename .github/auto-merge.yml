@@ -1,0 +1,7 @@
+# Majors never auto-merge; they stay for manual review.
+- match:
+    dependency_type: production
+    update_type: 'semver:patch'
+- match:
+    dependency_type: development
+    update_type: 'semver:minor'

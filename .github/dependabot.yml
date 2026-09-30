@@ -8,7 +8,7 @@ updates:
       cronjob: '17 4 9 * *'
     # Let a release settle before adopting it, to reduce supply-chain exposure.
     cooldown:
-      default: 7
+      default-days: 7
     open-pull-requests-limit: 15
     ignore:
       # @types/node must track the Node baseline in package.json engines, not the
@@ -22,5 +22,5 @@ updates:
       interval: cron
       cronjob: '23 4 9 * *'
     cooldown:
-      default: 7
+      default-days: 7
     open-pull-requests-limit: 15
