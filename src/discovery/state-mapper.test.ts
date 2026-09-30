@@ -6,6 +6,10 @@ describe('id and name derivation', () => {
         expect(sanitiseId('picture.mode')).toBe('picture_mode');
         expect(sanitiseId('a[b]c*d')).toBe('a_b_c_d');
         expect(sanitiseId('')).toBe('unknown');
+        // Symbols and non-cased letters are rejected by ioBroker too, not only the ASCII punctuation.
+        expect(sanitiseId('YouTube™')).toBe('YouTube_');
+        expect(sanitiseId('Director’s Cut')).toBe('Director_s_Cut');
+        expect(sanitiseId('設定')).toBe('__');
     });
 
     it('turns camelCase targets into readable names', () => {

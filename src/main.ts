@@ -73,6 +73,7 @@ class ProBraviaAdapter extends utils.Adapter {
 
         this.attachSsip();
         this.subscribeStates('*');
+        await this.device.prepare();
         await this.initialiseDevice();
     }
 

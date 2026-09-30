@@ -70,7 +70,10 @@ export class AppControlModule implements FeatureModule {
                 if (!application.uri) {
                     continue;
                 }
-                const id = sanitiseId(application.title || application.uri);
+                // A title in a non-Latin script sanitises to underscores only, and two such
+                // titles would collide, so fall back to the URI, which is unique.
+                const fromTitle = sanitiseId(application.title ?? '');
+                const id = /[A-Za-z0-9]/.test(fromTitle) ? fromTitle : sanitiseId(application.uri);
                 if (this.idToUri.has(id)) {
                     continue;
                 }

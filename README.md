@@ -33,6 +33,8 @@ run REST-only.
 
 Install from the ioBroker admin **Adapters** tab, then create an instance.
 
+Requires Node.js 22 or later, js-controller 6.0.11 or later and admin 7.6.20 or later.
+
 ## Setup
 
 On the display:
@@ -111,6 +113,13 @@ Protocol notes gathered from Sony's documentation live in [docs/PROTOCOL.md](doc
 ## Changelog
 
 <!-- **WORK IN PROGRESS** -->
+
+### **WORK IN PROGRESS**
+
+- Wake-on-LAN now works when the display was already suspended when the adapter started
+- A configured Wake-on-LAN broadcast address now takes precedence over the one the display reports
+- Object IDs built from app titles now use only characters ioBroker accepts
+- Dependency updates; tested on Node.js 22, 24 and 26
 
 ### 0.0.1
 

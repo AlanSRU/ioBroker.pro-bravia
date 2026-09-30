@@ -60,6 +60,11 @@ export class BraviaDevice {
      * poll; without this the log fills with identical lines indefinitely.
      */
     private readonly reportedContexts = new Set<string>();
+    /**
+     * Handles the writes that must work before discovery. A display suspended at startup never
+     * answers discovery, and Wake-on-LAN is the only way to bring it back.
+     */
+    private readonly preDiscovery: SystemModule;
 
     public constructor(
         private readonly options: BraviaDeviceOptions,
@@ -84,6 +89,13 @@ export class BraviaDevice {
                   timeoutMs: options.requestTimeoutMs,
               })
             : null;
+
+        this.preDiscovery = new SystemModule(this.context());
+    }
+
+    /** Create the objects that must exist before the display has been reached. */
+    public async prepare(): Promise<void> {
+        await this.preDiscovery.initWake();
     }
 
     private context(): DeviceContext {
@@ -243,15 +255,18 @@ export class BraviaDevice {
      * @returns true when a module claimed and executed the write
      */
     public async write(id: string, value: ioBroker.StateValue): Promise<boolean> {
-        if (!this.ready) {
-            throw new BraviaError('Display is not initialised yet', 'retryable');
-        }
         const separator = id.indexOf('.');
         if (separator === -1) {
             return false;
         }
         const root = id.slice(0, separator);
         const path = id.slice(separator + 1);
+        if (!this.ready) {
+            if (root === 'power' && (await this.preDiscovery.writeBeforeDiscovery(path, value))) {
+                return true;
+            }
+            throw new BraviaError('Display is not initialised yet', 'retryable');
+        }
         const handler = this.writeHandlers.get(root);
         if (!handler) {
             return false;

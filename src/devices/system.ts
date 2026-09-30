@@ -133,13 +133,7 @@ export class SystemModule implements FeatureModule {
             });
         }
 
-        await store.ensureState('power.wake', {
-            name: 'Wake on LAN',
-            type: 'boolean',
-            role: 'button',
-            read: false,
-            write: true,
-        });
+        await this.initWake();
 
         await store.ensureChannel('system', 'System settings');
         if (capabilities.supports('system', 'setPowerSavingMode')) {
@@ -454,8 +448,41 @@ export class SystemModule implements FeatureModule {
         await store.setAck('power.state', false);
     }
 
+    /**
+     * The objects Wake-on-LAN needs. Created before discovery as well as during it, because a
+     * display that is suspended when the instance starts never answers discovery at all.
+     */
+    public async initWake(): Promise<void> {
+        await this.ctx.store.ensureChannel('power', 'Power');
+        await this.ctx.store.ensureState('power.wake', {
+            name: 'Wake on LAN',
+            type: 'boolean',
+            role: 'button',
+            read: false,
+            write: true,
+        });
+    }
+
+    /**
+     * The only writes that can work before discovery: waking the display. Anything else needs
+     * the HTTP server that a suspended display has shut down.
+     */
+    public async writeBeforeDiscovery(path: string, value: ioBroker.StateValue): Promise<boolean> {
+        if (path === 'wake' || (path === 'state' && Boolean(value))) {
+            await this.wakeDisplay();
+            return true;
+        }
+        return false;
+    }
+
     private async wakeDisplay(): Promise<void> {
-        const mac = this.macAddress ?? this.ctx.config.macAddress;
+        // Before discovery nothing has been read from the display in this run, but the MAC it
+        // reported in an earlier run is still in the store.
+        const stored = await this.ctx.store.getValue('info.macAddress');
+        const mac =
+            this.macAddress ??
+            this.ctx.config.macAddress ??
+            (typeof stored === 'string' && stored ? stored : undefined);
         if (!mac) {
             throw new BraviaError(
                 'Cannot send Wake-on-LAN: the display MAC address is unknown. ' +
@@ -464,7 +491,9 @@ export class SystemModule implements FeatureModule {
             );
         }
         await wake(mac, {
-            broadcastAddress: this.broadcastAddress ?? this.ctx.config.broadcastAddress,
+            // A configured address is a deliberate override (e.g. a unicast relay across VLANs),
+            // so it wins over the one the display reports.
+            broadcastAddress: this.ctx.config.broadcastAddress ?? this.broadcastAddress,
             // Framework timers, so the inter-packet waits cannot outlive the instance.
             timers: this.ctx.timers,
         });

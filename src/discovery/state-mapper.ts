@@ -38,11 +38,13 @@ export interface SettingDescriptor {
 }
 
 /**
- * Characters ioBroker does not permit in object ids.
+ * An object id segment built from display data. An allowlist rather than a blocklist: ioBroker
+ * also rejects symbols such as ™ or ’ and letters outside Latin/Greek/Cyrillic case, all of
+ * which turn up in app titles.
  *
  */
 export function sanitiseId(target: string): string {
-    const cleaned = target.replace(/[[\]*,;'"`<>\\?\s.]/g, '_');
+    const cleaned = target.replace(/[^A-Za-z0-9_-]/g, '_');
     return cleaned.length > 0 ? cleaned : 'unknown';
 }
 

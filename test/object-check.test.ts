@@ -237,7 +237,7 @@ describe('created objects satisfy the repository object checker rules', () => {
             });
 
             it('uses only characters ioBroker permits in object ids', () => {
-                const invalid = [...store.objects.keys()].filter(id => /[\][*,;'"`<>\\?\s]/.test(id));
+                const invalid = [...store.objects.keys()].filter(id => /[^A-Za-z0-9_.-]/.test(id));
                 expect(invalid).toEqual([]);
             });
 
