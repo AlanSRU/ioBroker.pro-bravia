@@ -479,9 +479,11 @@ export class SystemModule implements FeatureModule {
         // Before discovery nothing has been read from the display in this run, but the MAC it
         // reported in an earlier run is still in the store.
         const stored = await this.ctx.store.getValue('info.macAddress');
+        // A configured MAC is an override ("leave blank to read it from the display"), so it
+        // wins over the one the display reports, the same rule as the broadcast address.
         const mac =
-            this.macAddress ??
             this.ctx.config.macAddress ??
+            this.macAddress ??
             (typeof stored === 'string' && stored ? stored : undefined);
         if (!mac) {
             throw new BraviaError(

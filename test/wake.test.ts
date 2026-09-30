@@ -103,6 +103,13 @@ describe('Wake-on-LAN', () => {
             );
         });
 
+        it('uses a configured MAC over the one the display reports, once discovery has run', async () => {
+            // The mock reports 12:34:56:78:9A:BC; before discovery the configured one wins too.
+            await connected({ macAddress: '00:11:22:33:44:55' });
+            await device!.write('power.wake', true);
+            expect(wakeMock).toHaveBeenCalledWith('00:11:22:33:44:55', expect.anything());
+        });
+
         it('falls back to the address the display reports over SSIP', async () => {
             await connected({});
             await device!.write('power.wake', true);

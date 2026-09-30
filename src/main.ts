@@ -106,7 +106,8 @@ class ProBraviaAdapter extends utils.Adapter {
      * that is powered down or still booting does not leave the adapter permanently dead.
      */
     private async initialiseDevice(): Promise<void> {
-        if (!this.device || this.unloading) {
+        // isReady: a retry brought forward by a wake can fire after discovery already succeeded.
+        if (!this.device || this.unloading || this.device.isReady) {
             return;
         }
 
@@ -166,6 +167,19 @@ class ProBraviaAdapter extends utils.Adapter {
             this.retryTimer = undefined;
             void this.initialiseDevice();
         }, this.retryDelaySeconds * 1000);
+    }
+
+    /**
+     * A display just woken over Wake-on-LAN boots within a minute or so, but by then an overnight
+     * backoff has reached its ceiling. Start the schedule again so it is picked up promptly.
+     */
+    private retrySoon(): void {
+        if (this.retryTimer) {
+            this.clearTimeout(this.retryTimer);
+            this.retryTimer = undefined;
+        }
+        this.retryDelaySeconds = 0;
+        this.scheduleRetry();
     }
 
     /**
@@ -235,6 +249,10 @@ class ProBraviaAdapter extends utils.Adapter {
             if (!handled) {
                 this.log.warn(`No handler for state ${relative}; the command was ignored`);
                 return;
+            }
+            // Before discovery only a wake is accepted, so this display is on its way back.
+            if (!this.device.isReady) {
+                this.retrySoon();
             }
             // Buttons are momentary: acknowledging them would leave them stuck "pressed".
             const object = await this.getObjectAsync(relative);
