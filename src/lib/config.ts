@@ -51,7 +51,8 @@ export const MAX_RETRY_SECONDS = 300;
  * @param current the previous delay, or 0 when this is the first failure of a run
  */
 export function nextRetrySeconds(current: number, pollSeconds: number): number {
-    const floor = Math.max(MIN_RETRY_SECONDS, pollSeconds);
+    // Capped too: a long poll interval (SSIP pushes changes anyway) must not delay reconnecting.
+    const floor = Math.min(MAX_RETRY_SECONDS, Math.max(MIN_RETRY_SECONDS, pollSeconds));
     if (current <= 0) {
         return floor;
     }

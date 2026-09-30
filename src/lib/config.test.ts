@@ -57,6 +57,8 @@ describe('startup retry backoff', () => {
         expect(nextRetrySeconds(0, 30)).toBe(30);
         // A 5s poll must not mean a 5s reconnect storm against a display that is switched off.
         expect(nextRetrySeconds(0, 5)).toBe(MIN_RETRY_SECONDS);
+        // An hourly poll must not mean waiting an hour for a display that has just been woken.
+        expect(nextRetrySeconds(0, 3600)).toBe(MAX_RETRY_SECONDS);
     });
 
     it('doubles up to the ceiling and stays there', () => {
