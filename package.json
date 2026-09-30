@@ -1,6 +1,6 @@
 {
   "name": "iobroker.pro-bravia",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Control and monitor Sony BRAVIA Professional Displays via REST API, Simple IP Control, IRCC-IP and Wake-on-LAN",
   "author": {
     "name": "Alan Paris",

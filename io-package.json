@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "pro-bravia",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "news": {
       "0.0.2": {
         "en": "Wake-on-LAN now works when the display was already suspended when the adapter started\nA configured Wake-on-LAN MAC or broadcast address now takes precedence over the one the display reports\nThe adapter now reconnects within 5 minutes of a display coming back, including right after Wake-on-LAN and with long poll intervals\nObject IDs built from app titles now use only characters ioBroker accepts\nDependency updates; tested on Node.js 22, 24 and 26",

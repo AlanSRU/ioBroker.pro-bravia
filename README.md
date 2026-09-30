@@ -113,8 +113,7 @@ Protocol notes gathered from Sony's documentation live in [docs/PROTOCOL.md](doc
 ## Changelog
 
 <!-- **WORK IN PROGRESS** -->
-
-### **WORK IN PROGRESS**
+### 0.0.2 (2026-09-30)
 
 - Wake-on-LAN now works when the display was already suspended when the adapter started
 - A configured Wake-on-LAN MAC or broadcast address now takes precedence over the one the display reports
